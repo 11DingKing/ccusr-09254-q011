@@ -138,3 +138,81 @@ class DiffOut(BaseModel):
     new_event_cutoff_id: str | None
     student_changes: list[dict[str, Any]]
     students_affected: int
+
+
+class DraftThresholdsIn(BaseModel):
+    overlong_seconds: int = Field(..., ge=0)
+    overlap_min_seconds: int = Field(..., ge=0)
+    negative_correction_seconds: int = Field(..., ge=0)
+
+
+class SandboxCreateIn(BaseModel):
+    draft_thresholds: DraftThresholdsIn
+    created_by: str = Field(..., min_length=1, max_length=128)
+    ttl_seconds: int | None = Field(None, ge=1)
+    sandbox_id: str | None = Field(None, min_length=1, max_length=128)
+
+
+class SandboxRunIn(BaseModel):
+    worker_id: str = Field("default-worker", min_length=1, max_length=128)
+
+
+class SandboxOut(BaseModel):
+    sandbox_id: str
+    plan_version: str
+    status: str
+    created_by: str
+    event_count: int
+    event_cutoff_id: str | None
+    production_rule_version: str
+    production_thresholds: dict[str, int]
+    draft_thresholds: dict[str, int]
+    production_findings: list[dict[str, Any]]
+    draft_findings: list[dict[str, Any]]
+    comparison: dict[str, Any] | None
+    attempts: int
+    last_error: str | None
+    expires_at: str
+    ran_at: str | None
+    adopted_at: str | None
+    created_at: str
+
+
+class SandboxComparisonOut(BaseModel):
+    sandbox_id: str
+    plan_version: str
+    status: str
+    expires_at: str
+    production_rule_version: str
+    event_cutoff_id: str | None
+    event_count: int
+    comparison: dict[str, Any]
+
+
+class SandboxAdoptIn(BaseModel):
+    requested_by: str = Field(..., min_length=1, max_length=128)
+    request_id: str | None = Field(None, min_length=1, max_length=128)
+
+
+class PublishRequestOut(BaseModel):
+    request_id: str
+    sandbox_id: str
+    plan_version: str
+    status: str
+    proposed_thresholds: dict[str, int]
+    requested_by: str
+    reviewed_by: str | None
+    review_reason: str | None
+    created_at: str
+    reviewed_at: str | None
+
+
+class PublishReviewIn(BaseModel):
+    approve: bool
+    reviewed_by: str = Field(..., min_length=1, max_length=128)
+    review_reason: str = Field(..., min_length=1, max_length=1000)
+
+
+class CleanupResultOut(BaseModel):
+    removed: int
+    skipped_pending: int
