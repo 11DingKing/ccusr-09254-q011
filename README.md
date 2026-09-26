@@ -19,3 +19,18 @@ python3 -m compileall -q app tests
 ```
 
 测试覆盖事件幂等导入、跨时区与跨日学时合并、实习确认、负向修正、冻结快照和差异查询；运行过程中不需要单独的数据库或网络服务。
+
+## 异常规则沙箱（只读）
+
+学院在调整超长签到、重叠活动和负向修正三类异常阈值前，可以用沙箱先评估新规则会产生多少案件。沙箱在创建时固定一组事件副本和一份规则草案，在隔离运行中分别应用当前生产规则与草案计算候选异常并输出差异；全程只写沙箱自有表，不触发正式通知，也不创建或修改正式案件。沙箱结果有期限（`ttl_seconds`，默认 7 天），到期后运行、比较与采纳均返回 410，并可被清理接口移除。
+
+主要接口（均位于 `/api`）：
+
+- `POST /plans/{plan_version}/sandboxes` 创建沙箱（同名重入返回原沙箱，参数冲突返回 409）
+- `POST /sandboxes/{sandbox_id}/runs` 启动或重入一次运行；`run_id` 为幂等键，已成功的运行直接复用，崩溃（租约过期）或失败的运行会被接管重算，`attempt` 自增
+- `GET /sandboxes/{sandbox_id}/diff` 比较最近一次成功运行中草案与生产规则的候选差异（新增、解除、保留）
+- `POST /sandboxes/{sandbox_id}/adoptions` 采纳草案：只登记待审批申请，生产规则不变
+- `POST /sandboxes/{sandbox_id}/adoptions/decision` 发布审批：批准后草案成为当前生产规则（`GET /plans/{plan_version}/rules/production` 可见），拒绝则关闭申请
+- `POST /sandboxes/cleanup` 清理所有到期沙箱；`DELETE /sandboxes/{sandbox_id}` 删除指定沙箱
+
+每次运行都会记录当时使用的生产规则版本，因此生产规则变更不会影响历史运行的差异结论；沙箱事件副本在创建时固定，后续生产事件导入也不会渗入沙箱结果。

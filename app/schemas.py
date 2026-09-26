@@ -138,3 +138,103 @@ class DiffOut(BaseModel):
     new_event_cutoff_id: str | None
     student_changes: list[dict[str, Any]]
     students_affected: int
+
+
+class DraftRulesIn(BaseModel):
+    """规则草案：三项异常阈值（秒），判定条件为严格大于。"""
+
+    overlong_checkin_seconds: int = Field(..., ge=0)
+    overlap_seconds: int = Field(..., ge=0)
+    negative_correction_seconds: int = Field(..., ge=0)
+
+
+class SandboxCreateIn(BaseModel):
+    sandbox_id: str = Field(..., min_length=1, max_length=128)
+    draft_rules: DraftRulesIn
+    ttl_seconds: int | None = Field(None, gt=0)
+
+
+class SandboxOut(BaseModel):
+    sandbox_id: str
+    plan_version: str
+    draft_rules: dict[str, Any]
+    event_cutoff_id: str | None
+    event_count: int
+    created_at: datetime
+    expires_at: datetime
+    expired: bool
+    latest_run_id: str | None
+    latest_run_status: str | None
+
+
+class RunCreateIn(BaseModel):
+    run_id: str | None = Field(None, min_length=1, max_length=128)
+    lease_seconds: int | None = Field(None, gt=0)
+
+
+class RunOut(BaseModel):
+    run_id: str
+    sandbox_id: str
+    plan_version: str
+    status: str
+    attempt: int
+    reused: bool
+    production_rule_version: str
+    draft_rule_version: str
+    production_candidate_count: int
+    draft_candidate_count: int
+    production_candidates: list[dict[str, Any]]
+    draft_candidates: list[dict[str, Any]]
+    diff: dict[str, Any] | None
+    error: str | None
+    created_at: datetime
+    finished_at: datetime | None
+
+
+class SandboxDiffOut(BaseModel):
+    sandbox_id: str
+    plan_version: str
+    run_id: str
+    production_rule_version: str
+    draft_rule_version: str
+    event_cutoff_id: str | None
+    generated_at: datetime | None
+    diff: dict[str, Any]
+
+
+class AdoptionCreateIn(BaseModel):
+    requested_by: str = Field(..., min_length=1, max_length=128)
+    rule_version: str | None = Field(None, min_length=1, max_length=128)
+
+
+class AdoptionDecisionIn(BaseModel):
+    decision: Literal["approved", "rejected"]
+    decided_by: str = Field(..., min_length=1, max_length=128)
+    reason: str = ""
+
+
+class AdoptionOut(BaseModel):
+    adoption_id: str
+    sandbox_id: str
+    run_id: str
+    plan_version: str
+    status: str
+    requested_by: str
+    decided_by: str | None
+    decided_at: datetime | None
+    decision_reason: str | None
+    rule_version: str
+    rule_set: dict[str, Any]
+    created_at: datetime
+
+
+class ProductionRulesOut(BaseModel):
+    plan_version: str
+    source: str
+    adoption_id: str | None
+    rules: dict[str, Any]
+
+
+class CleanupOut(BaseModel):
+    removed_sandbox_ids: list[str]
+    removed_count: int
